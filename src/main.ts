@@ -1,4 +1,4 @@
-import { launch, type Page } from 'puppeteer'
+import { launch, TimeoutError, type Page } from 'puppeteer'
 import { z } from 'zod'
 
 const ENV = z.object({
@@ -54,9 +54,17 @@ const main = async () => {
     console.log('Clicked offers link!')
 
     for (;;) {
-      const firstAnswer = await page.waitForSelector('#answer', { visible: true })
-      await firstAnswer?.select('Decline')
-      console.log('Clicked decline on first offer!')
+      try {
+        const firstAnswer = await page.waitForSelector('#answer', { visible: true })
+        await firstAnswer?.select('Decline')
+        console.log('Clicked decline on first offer!')
+      } catch (error: unknown) {
+        if (error instanceof TimeoutError) {
+          console.log('No offers to decline, quitting!')
+          break
+        }
+        throw error
+      }
 
       // Make sure we're asked to confirm a decline before accepting.
       await page.waitForNetworkIdle()
@@ -79,7 +87,9 @@ const main = async () => {
       console.log('Refreshed offers, running again!')
     }
   } finally {
-    // await browser.close()
+    console.log('All done, closing in 20 seconds')
+    await new Promise((resolve) => setTimeout(resolve, 20_000))
+    await browser.close()
   }
 }
 
