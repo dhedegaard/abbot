@@ -4,6 +4,10 @@ import { z } from 'zod'
 const ENV = z.object({
   USER: z.string().min(1),
   PASSWORD: z.string().min(1),
+  HEADLESS: z
+    .enum(['1', '0'])
+    .transform((value) => value === '1')
+    .pipe(z.boolean()),
 })
 interface ENV extends z.infer<typeof ENV> {}
 const env: ENV = ENV.parse(process.env)
@@ -11,12 +15,14 @@ const env: ENV = ENV.parse(process.env)
 const doLoginFlow = async (page: Page) => {
   await page.goto('https://aarhusbolig.dk/min-side/boligsoegningsportal/boligtilbud/')
 
+  console.log('Declining cookies')
   const declineCookies = await page.waitForSelector('::-p-text(Afvis alle)', { visible: true })
   if (declineCookies == null) {
     throw new Error('Could not find the decline cookies button')
   }
   await declineCookies.click()
 
+  console.log('Clicking login button')
   const loginButton = await page.waitForSelector('::-p-text(Log ind)', { visible: true })
   if (loginButton == null) {
     throw new Error('Could not find the login button')
@@ -37,26 +43,37 @@ const doLoginFlow = async (page: Page) => {
     throw new Error('Could not find the password input')
   }
   await passwordInput.type(env.PASSWORD)
+  console.log('Submitting login form')
   await passwordInput.press('Enter')
+  await page.waitForNetworkIdle()
 }
 
 const main = async () => {
-  const browser = await launch({ headless: false, defaultViewport: { width: 1600, height: 1000 } })
+  const browser = await launch({
+    headless: env.HEADLESS,
+    defaultViewport: { width: 1600, height: 1000 },
+  })
+  const page = await browser.newPage()
   try {
-    const page = await browser.newPage()
     await doLoginFlow(page)
-    await page.waitForNetworkIdle()
-    console.log('POST LOGIN!')
+    console.log('Login succeeded')
 
     const goToOffers = await page.waitForSelector('::-p-text(Se boligtilbud)', { visible: true })
-    await goToOffers?.click()
+    if (goToOffers == null) {
+      throw new Error('Could not find the offers link')
+    }
+    await goToOffers.click()
     await page.waitForNetworkIdle()
     console.log('Clicked offers link!')
 
     for (;;) {
       try {
         const firstAnswer = await page.waitForSelector('#answer', { visible: true })
-        await firstAnswer?.select('Decline')
+        if (firstAnswer == null) {
+          console.log('No offers to decline, quitting!')
+          break
+        }
+        await firstAnswer.select('Decline')
         console.log('Clicked decline on first offer!')
       } catch (error: unknown) {
         if (error instanceof TimeoutError) {
@@ -82,13 +99,22 @@ const main = async () => {
       const refreshOffers = await page.waitForSelector('::-p-text(Aktuelle tilbud)', {
         visible: true,
       })
-      await refreshOffers?.click()
+      if (refreshOffers == null) {
+        throw new Error('Could not find the refresh offers button')
+      }
+      await refreshOffers.click()
       await page.waitForNetworkIdle()
       console.log('Refreshed offers, running again!')
     }
+  } catch (error: unknown) {
+    const screenshotPath = `./error-${Date.now()}.png`
+    await page.screenshot({ path: screenshotPath })
+    console.error('An error occurred, screenshot saved to', screenshotPath)
   } finally {
-    console.log('All done, closing in 20 seconds')
-    await new Promise((resolve) => setTimeout(resolve, 20_000))
+    console.log('All done, closing soon!')
+    if (!env.HEADLESS) {
+      await new Promise((resolve) => setTimeout(resolve, 20_000))
+    }
     await browser.close()
   }
 }
