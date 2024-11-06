@@ -106,12 +106,12 @@ const main = async () => {
       await page.waitForNetworkIdle()
       console.log('Refreshed offers, running again!')
     }
-    const screenshotPath = `./success-${Date.now()}.png`
+    const screenshotPath = `./success-${new Date().toISOString().replaceAll(':', '-')}.png`
     await page.screenshot({ path: screenshotPath })
     console.log('All offers declined, screenshot saved to', screenshotPath)
   } catch (error: unknown) {
     console.error(error)
-    const screenshotPath = `./error-${Date.now()}.png`
+    const screenshotPath = `./error-${new Date().toISOString().replaceAll(':', '-')}.png`
     await page.screenshot({ path: screenshotPath })
     console.error('An error occurred, screenshot saved to', screenshotPath)
   } finally {
