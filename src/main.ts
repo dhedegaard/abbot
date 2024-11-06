@@ -107,6 +107,7 @@ const main = async () => {
       console.log('Refreshed offers, running again!')
     }
   } catch (error: unknown) {
+    console.error(error)
     const screenshotPath = `./error-${Date.now()}.png`
     await page.screenshot({ path: screenshotPath })
     console.error('An error occurred, screenshot saved to', screenshotPath)
