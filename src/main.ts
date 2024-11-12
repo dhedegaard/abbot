@@ -61,6 +61,7 @@ const main = async () => {
   const browser = await launch({
     headless: env.HEADLESS,
     defaultViewport: { width: 1600, height: 1000 },
+    args: ['--no-sandbox'],
   })
   const page = await browser.newPage()
   try {
