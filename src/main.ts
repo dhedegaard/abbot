@@ -1,5 +1,6 @@
 import { launch, TimeoutError, type Page } from 'puppeteer'
 import { z } from 'zod'
+import { mkdir } from 'node:fs/promises'
 
 const ENV = z.object({
   USER: z.string().min(1),
@@ -49,6 +50,8 @@ const doLoginFlow = async (page: Page) => {
 }
 
 const main = async () => {
+  await mkdir('./output', { recursive: true })
+
   const browser = await launch({
     headless: env.HEADLESS,
     defaultViewport: { width: 1600, height: 1000 },
@@ -106,12 +109,12 @@ const main = async () => {
       await page.waitForNetworkIdle()
       console.log('Refreshed offers, running again!')
     }
-    const screenshotPath = `./success-${new Date().toISOString().replaceAll(':', '-')}.png`
+    const screenshotPath = `./output/success-${new Date().toISOString().replaceAll(':', '-')}.png`
     await page.screenshot({ path: screenshotPath })
     console.log('All offers declined, screenshot saved to', screenshotPath)
   } catch (error: unknown) {
     console.error(error)
-    const screenshotPath = `./error-${new Date().toISOString().replaceAll(':', '-')}.png`
+    const screenshotPath = `./output/error-${new Date().toISOString().replaceAll(':', '-')}.png`
     await page.screenshot({ path: screenshotPath })
     console.error('An error occurred, screenshot saved to', screenshotPath)
   } finally {
