@@ -1,6 +1,7 @@
 services:
   abbot:
-    image: ghcr.io/dhedegaard/abbot:main
+    # image: ghcr.io/dhedegaard/abbot:main
+    build: .
     platform: linux/amd64
     environment:
       - USER=${USER}
