@@ -5,8 +5,9 @@ services:
     environment:
       - USER=${USER}
       - PASSWORD=${PASSWORD}
+      - OUTPUT_DIR=/output
     volumes:
-      - output:/${OUTPUT_DIR}
+      - output:/output
 
 volumes:
   output:
