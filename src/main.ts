@@ -1,6 +1,7 @@
+import { mkdir } from 'node:fs/promises'
+import path from 'node:path'
 import { launch, TimeoutError, type Page } from 'puppeteer'
 import { z } from 'zod'
-import { mkdir } from 'node:fs/promises'
 
 const ENV = z.object({
   USER: z.string().min(1),
@@ -9,6 +10,7 @@ const ENV = z.object({
     .enum(['1', '0'])
     .transform((value) => value === '1')
     .pipe(z.boolean()),
+  OUTPUT_DIR: z.optional(z.string().min(1)).default('./output').pipe(z.string().min(1)),
 })
 interface ENV extends z.infer<typeof ENV> {}
 const env: ENV = ENV.parse(process.env)
@@ -50,7 +52,8 @@ const doLoginFlow = async (page: Page) => {
 }
 
 const main = async () => {
-  await mkdir('./output', { recursive: true })
+  await mkdir(env.OUTPUT_DIR, { recursive: true })
+  console.log('Ensured', env.OUTPUT_DIR, 'exists')
 
   const browser = await launch({
     headless: env.HEADLESS,
@@ -109,12 +112,18 @@ const main = async () => {
       await page.waitForNetworkIdle()
       console.log('Refreshed offers, running again!')
     }
-    const screenshotPath = `./output/success-${new Date().toISOString().replaceAll(':', '-')}.png`
+    const screenshotPath = path.resolve(
+      env.OUTPUT_DIR,
+      `success-${new Date().toISOString().replaceAll(':', '-')}.png`
+    )
     await page.screenshot({ path: screenshotPath })
     console.log('All offers declined, screenshot saved to', screenshotPath)
   } catch (error: unknown) {
     console.error(error)
-    const screenshotPath = `./output/error-${new Date().toISOString().replaceAll(':', '-')}.png`
+    const screenshotPath = path.resolve(
+      env.OUTPUT_DIR,
+      `./output/error-${new Date().toISOString().replaceAll(':', '-')}.png`
+    )
     await page.screenshot({ path: screenshotPath })
     console.error('An error occurred, screenshot saved to', screenshotPath)
   } finally {

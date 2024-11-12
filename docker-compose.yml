@@ -6,6 +6,7 @@ services:
       - USER=${USER}
       - PASSWORD=${PASSWORD}
     volumes:
-      - output:/app/output
+      - output:/${OUTPUT_DIR}
+
 volumes:
   output:

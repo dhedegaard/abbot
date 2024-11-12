@@ -4,7 +4,8 @@ WORKDIR /app
 
 ENV USER="" \
   PASSWORD="" \
-  HEADLESS="1"
+  HEADLESS="1" \
+  OUTPUT_DIR="/output"
 
 COPY package.json package-lock.json ./
 RUN npm ci
