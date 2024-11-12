@@ -125,7 +125,7 @@ const main = async () => {
     console.error(error)
     const screenshotPath = path.resolve(
       env.OUTPUT_DIR,
-      `./output/error-${new Date().toISOString().replaceAll(':', '-')}.png`
+      `error-${new Date().toISOString().replaceAll(':', '-')}.png`
     )
     await page.screenshot({ path: screenshotPath })
     console.error('An error occurred, screenshot saved to', screenshotPath)
