@@ -3,12 +3,10 @@ services:
     # image: ghcr.io/dhedegaard/abbot:main
     build: .
     platform: linux/amd64
+    network_mode: host
     environment:
       - USER=${USER}
       - PASSWORD=${PASSWORD}
       - OUTPUT_DIR=/output
     volumes:
-      - output:/output
-
-volumes:
-  output:
+      - ./output:/output
