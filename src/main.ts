@@ -11,8 +11,9 @@ const ENV = z.object({
     .transform((value) => value === '1')
     .pipe(z.boolean()),
   OUTPUT_DIR: z
-    .optional(z.string().min(1))
-    .transform((value) => (value == null || value === '' ? undefined : value)),
+    .optional(z.string())
+    .transform((value) => (value == null || value === '' ? undefined : value))
+    .pipe(z.optional(z.string().min(1))),
 })
 interface ENV extends z.infer<typeof ENV> {}
 const env: ENV = ENV.parse(process.env)
