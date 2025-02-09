@@ -57,8 +57,10 @@ const doLoginFlow = async (page: Page) => {
 const main = async () => {
   if (env.OUTPUT_DIR != null) {
     await mkdir(env.OUTPUT_DIR, { recursive: true })
+    console.log('Ensured', env.OUTPUT_DIR, 'exists')
+  } else {
+    console.log('No output directory specified')
   }
-  console.log('Ensured', env.OUTPUT_DIR, 'exists')
 
   const browser = await launch({
     headless: env.HEADLESS,
