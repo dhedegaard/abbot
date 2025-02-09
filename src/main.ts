@@ -99,7 +99,7 @@ const main = async () => {
         visible: true,
       })
       const acceptDeclineButton = await page.waitForSelector(
-        '::-p-text(Ja, jeg accepterer at mit svar er bindende)',
+        '::-p-text(Ja, jeg bekræfter mit svar)',
         { visible: true }
       )
       await acceptDeclineButton?.click()
