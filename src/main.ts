@@ -10,10 +10,7 @@ const ENV = z.object({
     .enum(['1', '0'])
     .transform((value) => value === '1')
     .pipe(z.boolean()),
-  OUTPUT_DIR: z
-    .optional(z.string().min(1))
-    .transform((value) => (value == null || value.length === 0 ? './output' : value))
-    .pipe(z.string().min(1)),
+  OUTPUT_DIR: z.optional(z.string().min(1)),
 })
 interface ENV extends z.infer<typeof ENV> {}
 const env: ENV = ENV.parse(process.env)
@@ -55,7 +52,9 @@ const doLoginFlow = async (page: Page) => {
 }
 
 const main = async () => {
-  await mkdir(env.OUTPUT_DIR, { recursive: true })
+  if (env.OUTPUT_DIR != null) {
+    await mkdir(env.OUTPUT_DIR, { recursive: true })
+  }
   console.log('Ensured', env.OUTPUT_DIR, 'exists')
 
   const browser = await launch({
@@ -116,20 +115,24 @@ const main = async () => {
       await page.waitForNetworkIdle()
       console.log('Refreshed offers, running again!')
     }
-    const screenshotPath = path.resolve(
-      env.OUTPUT_DIR,
-      `success-${new Date().toISOString().replaceAll(':', '-')}.png`
-    )
-    await page.screenshot({ path: screenshotPath })
-    console.log('All offers declined, screenshot saved to', screenshotPath)
+    if (env.OUTPUT_DIR != null) {
+      const screenshotPath = path.resolve(
+        env.OUTPUT_DIR,
+        `success-${new Date().toISOString().replaceAll(':', '-')}.png`
+      )
+      await page.screenshot({ path: screenshotPath })
+    }
+    console.log('All offers declined')
   } catch (error: unknown) {
     console.error(error)
-    const screenshotPath = path.resolve(
-      env.OUTPUT_DIR,
-      `error-${new Date().toISOString().replaceAll(':', '-')}.png`
-    )
-    await page.screenshot({ path: screenshotPath })
-    console.error('An error occurred, screenshot saved to', screenshotPath)
+    if (env.OUTPUT_DIR != null) {
+      const screenshotPath = path.resolve(
+        env.OUTPUT_DIR,
+        `error-${new Date().toISOString().replaceAll(':', '-')}.png`
+      )
+      await page.screenshot({ path: screenshotPath })
+    }
+    console.error(`An error occurred: ${String(error)}`)
   } finally {
     console.log('All done, closing soon!')
     if (!env.HEADLESS) {
