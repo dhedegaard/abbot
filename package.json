@@ -1,11 +1,14 @@
 {
   "name": "abbot",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Automatically declines pending housing offers on aarhusbolig.dk.",
+  "private": true,
   "type": "module",
   "engines": {
     "node": "24"
   },
+  "author": "Dennis Hedegaard",
+  "license": "ISC",
   "scripts": {
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
@@ -14,10 +17,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "puppeteer": "^25.1.0",
     "tsx": "^4.22.4",
