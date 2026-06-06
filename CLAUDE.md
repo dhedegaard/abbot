@@ -27,6 +27,8 @@ docker compose up --build
 ```
 The compose file mounts `./output` into the container as `/output` for screenshots. Image is published to `ghcr.io/dhedegaard/abbot:main` via `.github/workflows/docker-publish.yml` on push to `main`.
 
+When bumping `puppeteer`, also bump the `ghcr.io/puppeteer/puppeteer:<version>` base-image tag in the `Dockerfile` to the exact same version — they must stay in lockstep so `npm ci` reuses the image's pre-installed Chromium instead of downloading a second copy.
+
 ## Architecture notes
 
 - **No test suite, no linter, no tsconfig.json** — `tsx` runs the TypeScript directly. Don't assume a build step or test runner exists.

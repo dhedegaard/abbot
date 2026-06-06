@@ -1,4 +1,6 @@
-FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25
+# Tag must match the puppeteer version in package.json, else npm ci downloads a
+# second Chromium instead of reusing the image's pre-installed one.
+FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25.1.0
 
 WORKDIR /app
 
