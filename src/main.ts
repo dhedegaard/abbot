@@ -18,36 +18,41 @@ const ENV = z.object({
 type ENV = z.infer<typeof ENV>
 const env: ENV = ENV.parse(process.env)
 
+// Wait for a visible element and fail with a clear message if it never appears.
+const findVisible = async (page: Page, selector: string, description: string) => {
+  const handle = await page.waitForSelector(selector, { visible: true })
+  if (handle == null) {
+    throw new Error(`Could not find ${description}`)
+  }
+  return handle
+}
+
 const doLoginFlow = async (page: Page) => {
   await page.goto('https://aarhusbolig.dk/min-side/boligsoegningsportal/boligtilbud/')
 
   console.log('Declining cookies')
-  const declineCookies = await page.waitForSelector('::-p-text(Afvis alle)', { visible: true })
-  if (declineCookies == null) {
-    throw new Error('Could not find the decline cookies button')
-  }
+  const declineCookies = await findVisible(
+    page,
+    '::-p-text(Afvis alle)',
+    'the decline cookies button'
+  )
   await declineCookies.click()
 
   console.log('Clicking login button')
-  const loginButton = await page.waitForSelector('::-p-text(Log ind)', { visible: true })
-  if (loginButton == null) {
-    throw new Error('Could not find the login button')
-  }
+  const loginButton = await findVisible(page, '::-p-text(Log ind)', 'the login button')
   await loginButton.click()
 
-  const usernameInput = await page.waitForSelector('input[placeholder="Medlemsnummer/E-mail"]', {
-    visible: true,
-  })
-  if (usernameInput == null) {
-    throw new Error('Could not find the username input')
-  }
+  const usernameInput = await findVisible(
+    page,
+    'input[placeholder="Medlemsnummer/E-mail"]',
+    'the username input'
+  )
   await usernameInput.type(env.USER)
-  const passwordInput = await page.waitForSelector('input[placeholder="Adgangskode"]', {
-    visible: true,
-  })
-  if (passwordInput == null) {
-    throw new Error('Could not find the password input')
-  }
+  const passwordInput = await findVisible(
+    page,
+    'input[placeholder="Adgangskode"]',
+    'the password input'
+  )
   await passwordInput.type(env.PASSWORD)
   console.log('Submitting login form')
   await passwordInput.press('Enter')
@@ -74,10 +79,7 @@ const main = async () => {
     await doLoginFlow(page)
     console.log('Login succeeded')
 
-    const goToOffers = await page.waitForSelector('::-p-text(Se boligtilbud)', { visible: true })
-    if (goToOffers == null) {
-      throw new Error('Could not find the offers link')
-    }
+    const goToOffers = await findVisible(page, '::-p-text(Se boligtilbud)', 'the offers link')
     await goToOffers.click()
     console.log('Clicked offers link!')
 
@@ -107,13 +109,11 @@ const main = async () => {
       await page.waitForSelector('::-p-text(Du ønsker at svare nej til et tilbud)', {
         visible: true,
       })
-      const acceptDeclineButton = await page.waitForSelector(
+      const acceptDeclineButton = await findVisible(
+        page,
         '::-p-text(Ja, jeg bekræfter mit svar)',
-        { visible: true }
+        'the confirm-decline button'
       )
-      if (acceptDeclineButton == null) {
-        throw new Error('Could not find the confirm-decline button')
-      }
       await acceptDeclineButton.click()
       console.log('Accepted decline!')
 
@@ -121,12 +121,11 @@ const main = async () => {
       // tab that matches instantly, so key off the confirm button disappearing.
       await page.waitForSelector('::-p-text(Ja, jeg bekræfter mit svar)', { hidden: true })
 
-      const refreshOffers = await page.waitForSelector('::-p-text(Aktuelle tilbud)', {
-        visible: true,
-      })
-      if (refreshOffers == null) {
-        throw new Error('Could not find the refresh offers button')
-      }
+      const refreshOffers = await findVisible(
+        page,
+        '::-p-text(Aktuelle tilbud)',
+        'the refresh offers button'
+      )
       // Wait for the refetch (registered before the click) so the next iteration
       // sees the refreshed list, not the stale declined offer.
       const offersRefetched = page.waitForResponse((res) =>
