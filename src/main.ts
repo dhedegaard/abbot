@@ -124,7 +124,7 @@ const main = async () => {
       const screenshotPath = path.resolve(
         env.OUTPUT_DIR,
         `success-${new Date().toISOString().replaceAll(':', '-')}.png`
-      )
+      ) as `${string}.png`
       await page.screenshot({ path: screenshotPath })
     }
     console.log('All offers declined')
@@ -134,7 +134,7 @@ const main = async () => {
       const screenshotPath = path.resolve(
         env.OUTPUT_DIR,
         `error-${new Date().toISOString().replaceAll(':', '-')}.png`
-      )
+      ) as `${string}.png`
       await page.screenshot({ path: screenshotPath })
     }
     console.error(`An error occurred: ${String(error)}`)
