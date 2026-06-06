@@ -15,12 +15,18 @@ type ENV = z.infer<typeof ENV>
 const env: ENV = ENV.parse(process.env)
 
 // Wait for a visible element and fail with a clear message if it never appears.
+// visible:true throws TimeoutError (never returns null), so rethrow it as a
+// readable error naming the step and selector — the usual cause is aarhusbolig
+// changing the Danish copy these text selectors match.
 const findVisible = async (page: Page, selector: string, description: string) => {
-  const handle = await page.waitForSelector(selector, { visible: true })
-  if (handle == null) {
-    throw new Error(`Could not find ${description}`)
+  try {
+    return (await page.waitForSelector(selector, { visible: true }))!
+  } catch (error: unknown) {
+    if (error instanceof TimeoutError) {
+      throw new Error(`Could not find ${description} (selector: ${selector})`, { cause: error })
+    }
+    throw error
   }
-  return handle
 }
 
 const doLoginFlow = async (page: Page) => {
