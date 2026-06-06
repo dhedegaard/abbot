@@ -116,7 +116,15 @@ const main = async () => {
           visible: true,
           timeout: 10_000,
         })
-        await firstAnswer!.select('Decline')
+        // select() silently matches nothing if the option value is gone, which
+        // would later stall waiting for a confirm modal that never opens — fail
+        // loudly here instead.
+        const selected = await firstAnswer!.select('Decline')
+        if (!selected.includes('Decline')) {
+          throw new Error(
+            'The #answer dropdown has no "Decline" option — aarhusbolig may have changed it'
+          )
+        }
         console.log('Clicked decline on first offer!')
       } catch (error: unknown) {
         if (error instanceof TimeoutError) {
