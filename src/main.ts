@@ -129,6 +129,7 @@ const main = async () => {
     }
     console.log('All offers declined')
   } catch (error: unknown) {
+    process.exitCode = 1
     console.error(error)
     if (env.OUTPUT_DIR != null) {
       const screenshotPath = path.resolve(
