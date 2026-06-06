@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # Typecheck/format don't need a browser; skip the ~150MB Chromium download.
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run typecheck
