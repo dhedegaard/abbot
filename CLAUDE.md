@@ -31,7 +31,7 @@ The compose file mounts `./output` into the container as `/output` for screensho
 
 - **No test suite, no linter, no tsconfig.json** — `tsx` runs the TypeScript directly. Don't assume a build step or test runner exists.
 - **Selectors are text-based and Danish.** The script uses Puppeteer's `::-p-text(...)` pseudo-selector matching exact UI strings like `Afvis alle`, `Log ind`, `Se boligtilbud`, `Du ønsker at svare nej til et tilbud`, `Ja, jeg bekræfter mit svar`, `Aktuelle tilbud`. If aarhusbolig.dk changes copy, these break — they are the primary failure mode.
-- **Decline loop** (`src/main.ts:83`): selects `Decline` on `#answer`, waits for the confirmation modal, clicks confirm, then clicks "Aktuelle tilbud" to refresh the list. Exits when no `#answer` element is found (either via `null` return or `TimeoutError`).
+- **Decline loop** (`src/main.ts:83`): selects `Decline` on `#answer`, waits for the confirmation modal, clicks confirm, then clicks "Aktuelle tilbud" to refresh the list. Exits via a 10s `TimeoutError` on the `#answer` check when no offers remain (with `visible: true`, `waitForSelector` never returns `null` — it resolves the element or throws).
 - **Error handling writes a screenshot** named `error-<iso-timestamp>.png` into `OUTPUT_DIR` if set; success path writes `success-<iso-timestamp>.png`. Colons in the ISO timestamp are replaced with `-` for filesystem safety.
 - Puppeteer launches with `--no-sandbox` and a fixed 1600×1000 viewport. The Docker image is pinned to `linux/amd64` (the compose file also forces this platform).
 
