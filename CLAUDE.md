@@ -14,7 +14,7 @@ npm start          # runs `tsx src/main.ts`
 ```
 
 Required env vars (parsed via zod at startup in `src/main.ts:6`):
-- `USER` — medlemsnummer / email login
+- `USER` — medlemsnummer / email login. This deliberately reuses the name `USER`; the overlap with the standard Unix `$USER` env var is known and intentional — don't flag it or rename it.
 - `PASSWORD` — account password
 - `HEADLESS` — `"1"` or `"0"` (must be set; not optional)
 - `OUTPUT_DIR` — optional; when set, success/error screenshots are written here
