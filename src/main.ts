@@ -6,14 +6,10 @@ import { z } from 'zod'
 const ENV = z.object({
   USER: z.string().min(1),
   PASSWORD: z.string().min(1),
-  HEADLESS: z
-    .enum(['1', '0'])
-    .transform((value) => value === '1')
-    .pipe(z.boolean()),
+  HEADLESS: z.enum(['1', '0']).transform((value) => value === '1'),
   OUTPUT_DIR: z
     .optional(z.string())
-    .transform((value) => (value == null || value === '' ? undefined : value))
-    .pipe(z.optional(z.string().min(1))),
+    .transform((value) => (value == null || value === '' ? undefined : value)),
 })
 type ENV = z.infer<typeof ENV>
 const env: ENV = ENV.parse(process.env)
@@ -145,7 +141,7 @@ const main = async () => {
     console.log('All offers declined')
   } catch (error: unknown) {
     process.exitCode = 1
-    console.error(error)
+    console.error('An error occurred:', error)
     if (env.OUTPUT_DIR != null) {
       const screenshotPath = path.resolve(
         env.OUTPUT_DIR,
@@ -153,7 +149,6 @@ const main = async () => {
       ) as `${string}.png`
       await page.screenshot({ path: screenshotPath })
     }
-    console.error(`An error occurred: ${String(error)}`)
   } finally {
     console.log('All done, closing soon!')
     if (!env.HEADLESS) {
