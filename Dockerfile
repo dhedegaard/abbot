@@ -14,7 +14,8 @@ ENV USER="" \
   OUTPUT_DIR=""
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# Runtime needs only prod deps (tsx bundles its own TypeScript); skip devDeps.
+RUN npm ci --omit=dev
 
 COPY . ./
 
