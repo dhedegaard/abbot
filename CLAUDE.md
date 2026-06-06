@@ -21,6 +21,8 @@ Required env vars (parsed via zod at startup in `src/main.ts:6`):
 
 `.envrc` is used with direnv for local development. With `HEADLESS=0` the browser stays open for 20s after completion (`src/main.ts:143`) so you can watch what happened.
 
+Scheduling/periodic execution is handled externally (outside this repo) — don't add a cron or scheduled workflow here; the script is meant to be invoked as a one-shot.
+
 Docker:
 ```bash
 docker compose up --build
