@@ -42,10 +42,12 @@ When bumping `puppeteer`, also bump the `ghcr.io/puppeteer/puppeteer:<version>` 
 - **Error handling writes a screenshot** named `error-<iso-timestamp>.png` into `OUTPUT_DIR` if set; success path writes `success-<iso-timestamp>.png`. Colons in the ISO timestamp are replaced with `-` for filesystem safety.
 - Puppeteer launches with `--no-sandbox` and a fixed 1600×1000 viewport. The Docker image is pinned to `linux/amd64` (the compose file also forces this platform).
 
-## Formatting
+## Formatting & linting
 
 Prettier is configured in `.prettierrc.json`: no semicolons, single quotes, 100-char width, 2-space tabs, ES5 trailing commas. Run `npm run format` to write, `npm run format:check` to verify.
 
+ESLint uses a flat config (`eslint.config.mjs`) with typescript-eslint's type-aware `recommendedTypeChecked` preset (scoped to `src/**/*.ts`; `eslint-config-prettier` disables formatting rules). Run `npm run lint` (or `lint:fix`).
+
 ## CI
 
-`.github/workflows/ci.yml` runs `npm run format:check` and `npm run typecheck` on every push to `main` and on PRs (with `PUPPETEER_SKIP_DOWNLOAD=true` so it skips the Chromium download). Keep both green.
+`.github/workflows/ci.yml` runs `npm run format:check`, `npm run typecheck`, and `npm run lint` on every push to `main` and on PRs (with `PUPPETEER_SKIP_DOWNLOAD=true` so it skips the Chromium download). Keep them green.

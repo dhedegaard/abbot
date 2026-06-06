@@ -15,7 +15,7 @@ const ENV = z.object({
     .transform((value) => (value == null || value === '' ? undefined : value))
     .pipe(z.optional(z.string().min(1))),
 })
-interface ENV extends z.infer<typeof ENV> {}
+type ENV = z.infer<typeof ENV>
 const env: ENV = ENV.parse(process.env)
 
 const doLoginFlow = async (page: Page) => {
