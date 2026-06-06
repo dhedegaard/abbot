@@ -160,6 +160,9 @@ const main = async () => {
       const offersRefetched = page.waitForResponse((res) =>
         res.url().includes('/MyOffers/GetMyOffers')
       )
+      // Guard against an unhandled rejection: if the click below throws, this
+      // waiter is never awaited and would reject on its own timeout later.
+      offersRefetched.catch(() => {})
       await refreshOffers.click()
       await offersRefetched
       console.log('Refreshed offers, running again!')
