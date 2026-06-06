@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:24
+FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25
 
 WORKDIR /app
 
