@@ -66,7 +66,8 @@ const main = async () => {
   const browser = await launch({
     headless: env.HEADLESS,
     defaultViewport: { width: 1600, height: 1000 },
-    args: ['--no-sandbox'],
+    // --disable-dev-shm-usage: /dev/shm is tiny in containers and crashes Chrome.
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
   })
   const page = await browser.newPage()
   try {
@@ -80,7 +81,11 @@ const main = async () => {
     await goToOffers.click()
     console.log('Clicked offers link!')
 
-    for (;;) {
+    // Cap iterations so a decline that never clears the list can't loop forever.
+    for (let iteration = 0; ; iteration++) {
+      if (iteration >= 50) {
+        throw new Error('Declined 50 offers without the list emptying; aborting runaway loop')
+      }
       try {
         // visible:true throws TimeoutError (never returns null); the short timeout
         // ends the loop when no offers remain.
@@ -106,7 +111,10 @@ const main = async () => {
         '::-p-text(Ja, jeg bekræfter mit svar)',
         { visible: true }
       )
-      await acceptDeclineButton?.click()
+      if (acceptDeclineButton == null) {
+        throw new Error('Could not find the confirm-decline button')
+      }
+      await acceptDeclineButton.click()
       console.log('Accepted decline!')
 
       // Decline is done when the modal closes. "Aktuelle tilbud" is a persistent
