@@ -155,10 +155,11 @@ const main = async () => {
         '::-p-text(Aktuelle tilbud)',
         'the refresh offers button'
       )
-      // Wait for the refetch (registered before the click) so the next iteration
-      // sees the refreshed list, not the stale declined offer.
-      const offersRefetched = page.waitForResponse((res) =>
-        res.url().includes('/MyOffers/GetMyOffers')
+      // Wait for the refetch so the next iteration sees the fresh list. The
+      // timeout fails fast on a hung refetch; the non-zero exit lets Azure retry.
+      const offersRefetched = page.waitForResponse(
+        (res) => res.url().includes('/MyOffers/GetMyOffers'),
+        { timeout: 15_000 }
       )
       // Guard against an unhandled rejection: if the click below throws, this
       // waiter is never awaited and would reject on its own timeout later.
