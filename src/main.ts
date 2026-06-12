@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { launch, TimeoutError, type Page } from 'puppeteer'
@@ -10,9 +11,20 @@ const ENV = z.object({
   OUTPUT_DIR: z
     .optional(z.string())
     .transform((value) => (value == null || value === '' ? undefined : value)),
+  SENTRY_DSN: z
+    .optional(z.string())
+    .transform((value) => (value == null || value === '' ? undefined : value)),
 })
 type ENV = z.infer<typeof ENV>
 const env: ENV = ENV.parse(process.env)
+
+// Error monitoring is opt-in: with no SENTRY_DSN the SDK stays disabled.
+// sendDefaultPii stays off — this script handles login credentials and we don't
+// want them attached to events.
+Sentry.init({
+  dsn: env.SENTRY_DSN,
+  sendDefaultPii: false,
+})
 
 // Wait for a visible element and fail with a clear message if it never appears.
 // visible:true throws TimeoutError (never returns null), so rethrow it as a
@@ -178,6 +190,7 @@ const main = async () => {
     console.log('All offers declined')
   } catch (error: unknown) {
     process.exitCode = 1
+    Sentry.captureException(error)
     console.error('An error occurred:', error)
     if (env.OUTPUT_DIR != null) {
       const screenshotPath = path.resolve(
@@ -196,6 +209,9 @@ const main = async () => {
 }
 
 await main().catch((error: unknown) => {
+  Sentry.captureException(error)
   console.error(error)
   process.exitCode = 1
 })
+// Short-lived process: flush buffered events before exit or they never send.
+await Sentry.flush(5_000)

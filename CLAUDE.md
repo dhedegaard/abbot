@@ -19,6 +19,7 @@ Required env vars (parsed via the zod `ENV` schema at the top of `src/main.ts`):
 - `PASSWORD` — account password
 - `HEADLESS` — `"1"` or `"0"` (must be set; not optional)
 - `OUTPUT_DIR` — optional; when set, success/error screenshots are written here
+- `SENTRY_DSN` — optional; when set, errors are reported to Sentry via `@sentry/node`. Unset = SDK stays disabled, so reporting is opt-in.
 
 `.envrc` is used with direnv for local development. With `HEADLESS=0` the browser stays open for 20s after completion (in `main()`'s `finally` block) so you can watch what happened.
 
@@ -42,6 +43,7 @@ When bumping `puppeteer`, also bump the `ghcr.io/puppeteer/puppeteer:<version>` 
 - **Login verification** (end of `doLoginFlow`): after submitting the form it races two signals — `Se boligtilbud` (the offers link, shown only on success) against `Ugyldigt login` (the modal error on bad credentials) — and throws a clear invalid-credentials error if the latter wins, instead of timing out 30s later on the missing offers link. Do **not** key failure off `Adgang nægtet`: that is the resting state of the unauthenticated page (present before login too), not a failure signal. On success `doLoginFlow` returns the offers-link handle for `main()` to click.
 - **Decline loop** (the `for` loop in `main()`): selects `Decline` on `#answer`, waits for the confirmation modal, clicks confirm, then clicks "Aktuelle tilbud" to refresh the list (awaiting the `/MyOffers/GetMyOffers` refetch so the next iteration sees the fresh list). Exits via a 10s `TimeoutError` on the `#answer` check when no offers remain (with `visible: true`, `waitForSelector` never returns `null` — it resolves the element or throws). The loop is capped at 50 iterations as a runaway guard. `select('Decline')` is checked against its returned matches and throws loudly if the option is gone (it would otherwise silently no-op and stall on a confirm modal that never opens).
 - **Error handling writes a screenshot** named `error-<iso-timestamp>.png` into `OUTPUT_DIR` if set; success path writes `success-<iso-timestamp>.png`. Colons in the ISO timestamp are replaced with `-` for filesystem safety.
+- **Sentry error reporting** (`@sentry/node`, initialized once at the top of `src/main.ts`): `Sentry.captureException` is called both in `main()`'s catch and the top-level `.catch` (the latter covers `launch()`, which runs before the try). Because this is a short-lived one-shot, `await Sentry.flush(5_000)` runs after `main()` so buffered events actually send before the process exits. `sendDefaultPii` is off — the script handles login credentials. With no `SENTRY_DSN` the SDK is a no-op.
 - Puppeteer launches with `--no-sandbox` and a fixed 1600×1000 viewport. The Docker image is pinned to `linux/amd64` (the compose file also forces this platform).
 
 ## Formatting & linting
