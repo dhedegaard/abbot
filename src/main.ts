@@ -167,11 +167,13 @@ const main = async () => {
         '::-p-text(Aktuelle tilbud)',
         'the refresh offers button'
       )
-      // Wait for the refetch so the next iteration sees the fresh list. The
-      // timeout fails fast on a hung refetch; the non-zero exit lets Azure retry.
+      // Wait for the refetch so the next iteration sees the fresh list. aarhusbolig
+      // is sometimes very slow, so the timeout is generous — it only exists to fail
+      // a truly hung refetch (non-zero exit lets Azure retry) rather than to police
+      // latency, which would needlessly abort runs the site would have completed.
       const offersRefetched = page.waitForResponse(
         (res) => res.url().includes('/MyOffers/GetMyOffers'),
-        { timeout: 15_000 }
+        { timeout: 20_000 }
       )
       // Guard against an unhandled rejection: if the click below throws, this
       // waiter is never awaited and would reject on its own timeout later.
