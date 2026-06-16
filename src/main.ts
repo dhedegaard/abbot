@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
-import { launch, TimeoutError, type Page } from 'puppeteer'
+import { launch, TimeoutError, type ElementHandle, type Page } from 'puppeteer'
 import { z } from 'zod'
 
 const ENV = z.object({
@@ -110,6 +110,21 @@ const main = async () => {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   })
   const page = await browser.newPage()
+
+  // Diagnostics: log every GetMyOffers response with its status and elapsed time.
+  // This reveals whether the offers list refetches on its own after a decline (a
+  // hit logged right after "Accepted decline!"), whether clicking "Aktuelle tilbud"
+  // fires its own request at all, and how slow the site really is — i.e. which of a
+  // slow site vs. a request that never fires causes a refresh-wait timeout.
+  const startedAt = performance.now()
+  page.on('response', (res) => {
+    if (res.url().includes('/MyOffers/GetMyOffers')) {
+      console.log(
+        `[net] GetMyOffers ${res.status()} at +${Math.round(performance.now() - startedAt)}ms`
+      )
+    }
+  })
+
   try {
     const goToOffers = await doLoginFlow(page)
     console.log('Login succeeded')
@@ -121,17 +136,20 @@ const main = async () => {
       if (iteration >= 50) {
         throw new Error('Declined 50 offers without the list emptying; aborting runaway loop')
       }
+      // Handle to the offer we decline this iteration. After refreshing we wait for
+      // this exact element to detach — that's how we know the list reloaded.
+      let declinedAnswer: ElementHandle
       try {
         // visible:true throws TimeoutError (never returns null); the short timeout
         // ends the loop when no offers remain.
-        const firstAnswer = await page.waitForSelector('#answer', {
+        declinedAnswer = (await page.waitForSelector('#answer', {
           visible: true,
           timeout: 10_000,
-        })
+        }))!
         // select() silently matches nothing if the option value is gone, which
         // would later stall waiting for a confirm modal that never opens — fail
         // loudly here instead.
-        const selected = await firstAnswer!.select('Decline')
+        const selected = await declinedAnswer.select('Decline')
         if (!selected.includes('Decline')) {
           throw new Error(
             'The #answer dropdown has no "Decline" option — aarhusbolig may have changed it'
@@ -167,19 +185,26 @@ const main = async () => {
         '::-p-text(Aktuelle tilbud)',
         'the refresh offers button'
       )
-      // Wait for the refetch so the next iteration sees the fresh list. aarhusbolig
-      // is sometimes very slow, so the timeout is generous — it only exists to fail
-      // a truly hung refetch (non-zero exit lets Azure retry) rather than to police
-      // latency, which would needlessly abort runs the site would have completed.
-      const offersRefetched = page.waitForResponse(
-        (res) => res.url().includes('/MyOffers/GetMyOffers'),
-        { timeout: 20_000 }
-      )
-      // Guard against an unhandled rejection: if the click below throws, this
-      // waiter is never awaited and would reject on its own timeout later.
-      offersRefetched.catch(() => {})
       await refreshOffers.click()
-      await offersRefetched
+      // Wait for the refreshed list, not a specific XHR. Clicking the already-active
+      // "Aktuelle tilbud" tab doesn't reliably fire a /MyOffers/GetMyOffers request
+      // (the decline itself may have already refetched, or it's served from cache),
+      // so keying off that response timed out even on healthy runs. Instead wait for
+      // the offer we just declined to leave the DOM — a keyed list drops its row on
+      // refresh — which is the actual signal the next iteration sees fresh state. The
+      // generous timeout is a runaway guard (non-zero exit lets Azure retry), not
+      // latency policing.
+      try {
+        await page.waitForFunction((el) => !el.isConnected, { timeout: 20_000 }, declinedAnswer)
+      } catch (error: unknown) {
+        if (error instanceof TimeoutError) {
+          throw new Error(
+            'Offers list never refreshed after declining (the declined offer stayed on the page)',
+            { cause: error }
+          )
+        }
+        throw error
+      }
       console.log('Refreshed offers, running again!')
     }
     if (env.OUTPUT_DIR != null) {
