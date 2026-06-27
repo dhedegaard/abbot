@@ -178,7 +178,23 @@ const main = async () => {
 
       // Decline is done when the modal closes. "Aktuelle tilbud" is a persistent
       // tab that matches instantly, so key off the confirm button disappearing.
-      await page.waitForSelector('::-p-text(Ja, jeg bekræfter mit svar)', { hidden: true })
+      // The modal stays open until aarhusbolig's decline round-trip returns, so an
+      // explicit timeout (matching the refetch waiter) bounds a slow site and the
+      // wrapped error names the step instead of bubbling a bare puppeteer timeout.
+      try {
+        await page.waitForSelector('::-p-text(Ja, jeg bekræfter mit svar)', {
+          hidden: true,
+          timeout: 20_000,
+        })
+      } catch (error: unknown) {
+        if (error instanceof TimeoutError) {
+          throw new Error(
+            'Decline-confirm modal never closed after confirming (slow aarhusbolig?)',
+            { cause: error }
+          )
+        }
+        throw error
+      }
 
       const refreshOffers = await findVisible(
         page,
