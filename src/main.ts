@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
-import { launch, TimeoutError, type ElementHandle, type Page } from 'puppeteer'
+import { launch, TimeoutError, type ElementHandle, type HTTPRequest, type Page } from 'puppeteer'
 import { z } from 'zod'
 
 const ENV = z.object({
@@ -111,18 +111,35 @@ const main = async () => {
   })
   const page = await browser.newPage()
 
-  // Diagnostics: log every GetMyOffers response with its status and elapsed time.
-  // This reveals whether the offers list refetches on its own after a decline (a
-  // hit logged right after "Accepted decline!"), whether clicking "Aktuelle tilbud"
-  // fires its own request at all, and how slow the site really is — i.e. which of a
-  // slow site vs. a request that never fires causes a refresh-wait timeout.
+  // Diagnostics. GetMyOffers (the list fetch) logs a timeline marker showing how
+  // slow the site is and whether the list refetches after a decline. Non-GET
+  // requests log on send (->), response (<-, with round-trip time), and failure
+  // (xx): the confirm-modal-close wait rides the decline POST, so `->` with no `<-`
+  // within 20s = slow/hung site, while no `->` after "Accepted decline!" = the
+  // confirm click never submitted.
   const startedAt = performance.now()
+  const sentAt = new WeakMap<HTTPRequest, number>()
+  const sinceStart = () => `+${Math.round(performance.now() - startedAt)}ms`
+  page.on('request', (req) => {
+    if (req.method() === 'GET') return
+    sentAt.set(req, performance.now())
+    console.log(`[net] -> ${req.method()} ${req.url()} at ${sinceStart()}`)
+  })
+  page.on('requestfailed', (req) => {
+    if (req.method() === 'GET') return
+    console.log(
+      `[net] xx ${req.method()} ${req.url()} ${req.failure()?.errorText ?? 'failed'} at ${sinceStart()}`
+    )
+  })
   page.on('response', (res) => {
     if (res.url().includes('/MyOffers/GetMyOffers')) {
-      console.log(
-        `[net] GetMyOffers ${res.status()} at +${Math.round(performance.now() - startedAt)}ms`
-      )
+      console.log(`[net] GetMyOffers ${res.status()} at ${sinceStart()}`)
     }
+    const req = res.request()
+    if (req.method() === 'GET') return
+    const sent = sentAt.get(req)
+    const took = sent == null ? '?' : `${Math.round(performance.now() - sent)}ms`
+    console.log(`[net] <- ${req.method()} ${res.url()} ${res.status()} took ${took}`)
   })
 
   try {
