@@ -224,7 +224,13 @@ const main = async () => {
         env.OUTPUT_DIR,
         `error-${new Date().toISOString().replaceAll(':', '-')}.png`
       ) as `${string}.png`
-      await page.screenshot({ path: screenshotPath })
+      // The page/browser is often dead by the time we're here — don't let a
+      // failed screenshot mask the original error we just reported.
+      try {
+        await page.screenshot({ path: screenshotPath })
+      } catch (screenshotError: unknown) {
+        console.error('Could not capture error screenshot:', screenshotError)
+      }
     }
   } finally {
     console.log('All done, closing soon!')
