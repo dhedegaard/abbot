@@ -33,5 +33,6 @@ RUN npm ci --omit=dev
 # error fails the typecheck stage and this image is never produced.
 COPY --from=typecheck /app/src ./src
 
-VOLUME /app/output
+# Matches OUTPUT_DIR / the compose bind-mount target where screenshots land.
+VOLUME /output
 CMD [ "node", "src/main.ts" ]

@@ -13,6 +13,14 @@ Sentry.init({
   sendDefaultPii: false,
 })
 
+// Build a screenshot path under OUTPUT_DIR. Colons in the ISO stamp become `-`
+// for filesystem safety; the `.png` cast satisfies page.screenshot's typing.
+const screenshotPath = (outputDir: string, prefix: string) =>
+  path.resolve(
+    outputDir,
+    `${prefix}-${new Date().toISOString().replaceAll(':', '-')}.png`
+  ) as `${string}.png`
+
 const doLoginFlow = async (page: Page) => {
   await page.goto('https://aarhusbolig.dk/min-side/boligsoegningsportal/boligtilbud/')
 
@@ -218,11 +226,7 @@ const main = async () => {
       console.log('Refreshed offers, running again!')
     }
     if (env.OUTPUT_DIR != null) {
-      const screenshotPath = path.resolve(
-        env.OUTPUT_DIR,
-        `success-${new Date().toISOString().replaceAll(':', '-')}.png`
-      ) as `${string}.png`
-      await page.screenshot({ path: screenshotPath })
+      await page.screenshot({ path: screenshotPath(env.OUTPUT_DIR, 'success') })
     }
     console.log('All offers declined')
   } catch (error: unknown) {
@@ -230,14 +234,10 @@ const main = async () => {
     Sentry.captureException(error)
     console.error('An error occurred:', error)
     if (env.OUTPUT_DIR != null) {
-      const screenshotPath = path.resolve(
-        env.OUTPUT_DIR,
-        `error-${new Date().toISOString().replaceAll(':', '-')}.png`
-      ) as `${string}.png`
       // The page/browser is often dead by the time we're here — don't let a
       // failed screenshot mask the original error we just reported.
       try {
-        await page.screenshot({ path: screenshotPath })
+        await page.screenshot({ path: screenshotPath(env.OUTPUT_DIR, 'error') })
       } catch (screenshotError: unknown) {
         console.error('Could not capture error screenshot:', screenshotError)
       }
