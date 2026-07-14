@@ -50,21 +50,25 @@ const doLoginFlow = async (page: Page) => {
   // error. ("Adgang nægtet" is the resting state of the unauthenticated page, so
   // it can't serve as the failure signal.) Racing both fails fast on bad
   // credentials instead of timing out 30s later on the missing offers link.
-  const offersLink = page
-    .waitForSelector('::-p-text(Se boligtilbud)', { visible: true })
-    .then((handle) => ({ ok: true as const, handle }))
+  const offersLink = findVisible(page, '::-p-text(Se boligtilbud)', 'the offers link').then(
+    (handle) => ({ ok: true as const, handle })
+  )
   const invalidLogin = page
     .waitForSelector('::-p-text(Ugyldigt login)', { visible: true })
     .then(() => ({ ok: false as const, handle: null }))
   // The loser keeps waiting until its timeout; swallow that rejection so it can't
   // surface as an unhandled rejection once the race has already settled.
-  offersLink.catch(() => {})
-  invalidLogin.catch(() => {})
+  offersLink.catch(() => {
+    /* swallow */
+  })
+  invalidLogin.catch(() => {
+    /* swallow */
+  })
   const result = await Promise.race([offersLink, invalidLogin])
   if (!result.ok) {
     throw new Error('Login failed: invalid USER/PASSWORD (aarhusbolig reported "Ugyldigt login")')
   }
-  return result.handle!
+  return result.handle
 }
 
 const main = async () => {
@@ -146,10 +150,16 @@ const main = async () => {
       try {
         // visible:true throws TimeoutError (never returns null); the short timeout
         // ends the loop when no offers remain.
-        declinedAnswer = (await page.waitForSelector('#answer', {
+        const answer = await page.waitForSelector('#answer', {
           visible: true,
           timeout: 10_000,
-        }))!
+        })
+        // Unreachable per the visible:true contract, but the type says null — fail
+        // loudly (a plain Error, not the TimeoutError that means "no offers left").
+        if (answer == null) {
+          throw new Error('#answer matched but resolved null (unexpected)')
+        }
+        declinedAnswer = answer
         // select() silently matches nothing if the option value is gone, which
         // would later stall waiting for a confirm modal that never opens — fail
         // loudly here instead.

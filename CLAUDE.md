@@ -67,7 +67,7 @@ Prettier (`.prettierrc.json`): no semicolons, single quotes, 100-char width, 2-s
 
 `format:check` runs `prettier --check .` over the whole repo (Markdown/YAML too, not just `src`) — run `npm run format` before committing doc-only edits (e.g. `*x*` → `_x_`), or CI goes red on formatting alone.
 
-ESLint (`eslint.config.mjs`, flat config): typescript-eslint `recommendedTypeChecked`, scoped to `src/**/*.ts`; `eslint-config-prettier` disables formatting rules. `npm run lint` (or `lint:fix`).
+ESLint (`eslint.config.mjs`, flat config): typescript-eslint `strictTypeChecked` + `stylisticTypeChecked`, scoped to `src/**/*.ts`; `eslint-config-prettier` disables formatting rules. `npm run lint` (or `lint:fix`). Two rules are relaxed with inline comments explaining why: `no-empty-object-type` (off, for the zod `interface ... {}` form) and `restrict-template-expressions` (`allowNumber: true`, for diagnostic logs). Empty `.catch(() => {})` no-ops carry a `/* swallow */` comment to satisfy `no-empty-function`; `findVisible`/`waitForSelector` null results are narrowed with explicit guards rather than `!`.
 
 ## CI
 

@@ -6,7 +6,13 @@ import { TimeoutError, type ElementHandle, type HTTPRequest, type Page } from 'p
 // changing the Danish copy these text selectors match.
 export const findVisible = async (page: Page, selector: string, description: string) => {
   try {
-    return (await page.waitForSelector(selector, { visible: true }))!
+    const handle = await page.waitForSelector(selector, { visible: true })
+    // visible:true throws TimeoutError rather than resolving null; the return type
+    // doesn't capture that, so route a null result through the same not-found path.
+    if (handle == null) {
+      throw new TimeoutError(`waitForSelector resolved null for ${selector}`)
+    }
+    return handle
   } catch (error: unknown) {
     if (error instanceof TimeoutError) {
       throw new Error(`Could not find ${description} (selector: ${selector})`, { cause: error })
@@ -34,7 +40,9 @@ export const clickAwaitingRequest = async (
       }
     )
     // Swallow the timeout if the click throws before we await it.
-    requestSent.catch(() => {})
+    requestSent.catch(() => {
+      /* swallow */
+    })
     await button.click()
 
     let request: HTTPRequest

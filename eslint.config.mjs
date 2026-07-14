@@ -6,7 +6,11 @@ export default tseslint.config(
   { ignores: ['node_modules/', 'output/'] },
   {
     files: ['src/**/*.ts'],
-    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.strictTypeChecked,
+      tseslint.configs.stylisticTypeChecked,
+    ],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -17,6 +21,9 @@ export default tseslint.config(
       // We use `interface Foo extends z.infer<...> {}` for zod-derived object
       // types; the empty interface is intentional.
       '@typescript-eslint/no-empty-object-type': 'off',
+      // Numbers in template literals are fine — the diagnostics logs interpolate
+      // timings/counts. Keep the rule for everything else (objects, any, nullish).
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     },
   },
   eslintConfigPrettier
