@@ -23,6 +23,8 @@ Env vars (parsed via the zod `ENV` schema in `src/env.ts`):
 
 `.envrc` + direnv for local dev. With `HEADLESS=0` the browser stays open 20s after completion (`main()`'s `finally`) so you can watch.
 
+**Running `npm start` is a live, irreversible action** — it uses the real `.envrc` credentials against the production account and declines every pending offer for real. There is no dry-run/sandbox mode. Safe to run to verify wiring when the account is empty (exits at `No offers to decline`); if offers are pending it _will_ decline them. For a quick headless verification that skips the 20s watch window, `HEADLESS=1 npm start`.
+
 **Verifying decline-loop changes needs a real pending offer.** With none, `npm start` exits at `No offers to decline, quitting!` before the confirm/refresh code runs — a clean run on an empty account exercises none of it. CI only lints/type-checks; it never drives the browser.
 
 Scheduling is external — don't add a cron or scheduled workflow here; the script is a one-shot.
