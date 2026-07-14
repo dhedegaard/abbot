@@ -2,8 +2,6 @@
   "extends": ["@tsconfig/node24/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
   "compilerOptions": {
     "noEmit": true,
-    // Node runs .ts directly; imports use .ts extensions, erasableSyntaxOnly
-    // rejects syntax native stripping can't run (enums, decorators, ...).
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "types": ["node"],

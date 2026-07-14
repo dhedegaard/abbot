@@ -34,5 +34,4 @@ RUN npm ci --omit=dev
 COPY --from=typecheck /app/src ./src
 
 VOLUME /app/output
-# Node strips .ts types natively (base image is Node 24).
 CMD [ "node", "src/main.ts" ]
