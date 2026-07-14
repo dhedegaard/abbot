@@ -37,6 +37,8 @@ docker compose up --build
 
 Compose mounts `./output` → `/output` for screenshots. Image publishes to `ghcr.io/dhedegaard/abbot:main` via `.github/workflows/docker-publish.yml` on push to `main`.
 
+The image is a two-stage build: a `typecheck` stage runs `tsc --noEmit` and the runtime stage copies `src/` from it, so a type error fails the build and a broken image never publishes. Preserve that `COPY --from=typecheck` edge — BuildKit prunes an unreferenced stage, silently disabling the typecheck. The base image runs as non-root (`pptruser`), so build steps can't rewrite root-owned copied files (e.g. `npm prune` on `package-lock.json` → EACCES).
+
 When bumping `puppeteer`, bump the `ghcr.io/puppeteer/puppeteer:<version>` base tag in the `Dockerfile` to the exact same version — they must stay in lockstep so `npm ci` reuses the image's Chromium instead of downloading a second copy.
 
 Node version is pinned in six places that must move together on a bump: `engines.node` + `@types/node@^<N>` (package.json), `.nvmrc`, `@tsconfig/node<N>` and its `lib` override (tsconfig.json), and the Dockerfile's puppeteer base image — which bundles its own Node (`25.1.0` → Node 24.16.0), not directly settable. CI needs no edit; `setup-node` reads `node-version-file: package.json`. Check the base image's Node cheaply (no layer pull) with `docker buildx imagetools inspect ghcr.io/puppeteer/puppeteer:<ver> --format '{{json .Image}}'`.
