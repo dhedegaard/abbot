@@ -2,6 +2,10 @@
   "extends": ["@tsconfig/node24/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
   "compilerOptions": {
     "noEmit": true,
+    // Node runs .ts directly; imports use .ts extensions, erasableSyntaxOnly
+    // rejects syntax native stripping can't run (enums, decorators, ...).
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "types": ["node"],
     // Re-list @tsconfig/node24's libs (lib replaces, doesn't merge) plus DOM, so
     // puppeteer browser-context callbacks (page.waitForFunction) can use DOM types.

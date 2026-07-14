@@ -2,8 +2,8 @@ import * as Sentry from '@sentry/node'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { launch, TimeoutError, type ElementHandle, type HTTPRequest, type Page } from 'puppeteer'
-import { env } from './env.js'
-import { clickAwaitingRequest, findVisible } from './puppeteer-helpers.js'
+import { env } from './env.ts'
+import { clickAwaitingRequest, findVisible } from './puppeteer-helpers.ts'
 
 // Error monitoring is opt-in: with no SENTRY_DSN the SDK stays disabled.
 // sendDefaultPii stays off — this script handles login credentials and we don't

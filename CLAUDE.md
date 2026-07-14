@@ -10,7 +10,7 @@ Puppeteer automation that logs into the Danish housing portal `aarhusbolig.dk` a
 
 ```bash
 npm install
-npm start          # runs `tsx src/main.ts`
+npm start          # runs `node src/main.ts`
 ```
 
 Env vars (parsed via the zod `ENV` schema in `src/env.ts`):
@@ -43,7 +43,7 @@ Node version is pinned in six places that must move together on a bump: `engines
 
 ## Architecture notes
 
-- **No test suite, no build step.** `tsx` runs the TypeScript directly; `tsconfig.json` is type-check only (`npm run typecheck` = `tsc --noEmit`), extending `@tsconfig/node24` + `@tsconfig/strictest`. No bundler or test runner exists. `moduleResolution` is `nodenext`, so relative imports use `.js` specifiers that resolve to the `.ts` files (`./env.js`, `./puppeteer-helpers.js`).
+- **No test suite, no build step.** Node runs the `.ts` files directly via native type stripping (`node src/main.ts`, no `tsx`); `tsconfig.json` is type-check only (`npm run typecheck` = `tsc --noEmit`), extending `@tsconfig/node24` + `@tsconfig/strictest`. No bundler or test runner exists. Relative imports carry the real `.ts` extension (`./env.ts`, `./puppeteer-helpers.ts`) since Node doesn't rewrite `.js`→`.ts`; `allowImportingTsExtensions` + `erasableSyntaxOnly` are set, so typecheck rejects non-erasable syntax (enums, decorators, runtime namespaces) that native stripping can't run.
 - **`src/env.ts` conventions** — `import * as z from 'zod'` (namespace import, preferred for tree-shaking; don't rewrite to `import { z }`). The env shape is an `interface ENV extends z.infer<typeof ENV> {}`; `@typescript-eslint/no-empty-object-type` is turned `off` in `eslint.config.mjs` so this empty-interface form is allowed. `ENV.parse` passes `{ reportInput: true }`.
 - **`findVisible(page, selector, description)`** (`src/puppeteer-helpers.ts`) — shared helper for every UI interaction: waits for a `visible: true` element, and on `TimeoutError` rethrows a readable `Could not find <description> (selector: <selector>)` (original kept as `cause`). Prefer it over raw `waitForSelector` so a broken Danish selector names the failing step. Sole exception: the decline loop's `#answer` probe uses a short custom timeout and treats `TimeoutError` as the normal "no offers left" exit.
 - **Selectors are text-based and Danish** — Puppeteer's `::-p-text(...)` matching exact UI strings (`Afvis alle`, `Log ind`, `Se boligtilbud`, `Ugyldigt login`, `Du ønsker at svare nej til et tilbud`, `Ja, jeg bekræfter mit svar`, `Aktuelle tilbud`). If aarhusbolig.dk changes copy these break — the primary failure mode.
