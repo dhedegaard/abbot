@@ -13,6 +13,11 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      // We use `interface Foo extends z.infer<...> {}` for zod-derived object
+      // types; the empty interface is intentional.
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
   },
   eslintConfigPrettier
 )

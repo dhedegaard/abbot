@@ -2,21 +2,8 @@ import * as Sentry from '@sentry/node'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { launch, TimeoutError, type ElementHandle, type HTTPRequest, type Page } from 'puppeteer'
-import { z } from 'zod'
-
-const ENV = z.object({
-  USER: z.string().min(1),
-  PASSWORD: z.string().min(1),
-  HEADLESS: z.enum(['1', '0']).transform((value) => value === '1'),
-  OUTPUT_DIR: z
-    .optional(z.string())
-    .transform((value) => (value == null || value === '' ? undefined : value)),
-  SENTRY_DSN: z
-    .optional(z.string())
-    .transform((value) => (value == null || value === '' ? undefined : value)),
-})
-type ENV = z.infer<typeof ENV>
-const env: ENV = ENV.parse(process.env)
+import { env } from './env.js'
+import { clickAwaitingRequest, findVisible } from './puppeteer-helpers.js'
 
 // Error monitoring is opt-in: with no SENTRY_DSN the SDK stays disabled.
 // sendDefaultPii stays off — this script handles login credentials and we don't
@@ -25,83 +12,6 @@ Sentry.init({
   dsn: env.SENTRY_DSN,
   sendDefaultPii: false,
 })
-
-// Wait for a visible element and fail with a clear message if it never appears.
-// visible:true throws TimeoutError (never returns null), so rethrow it as a
-// readable error naming the step and selector — the usual cause is aarhusbolig
-// changing the Danish copy these text selectors match.
-const findVisible = async (page: Page, selector: string, description: string) => {
-  try {
-    return (await page.waitForSelector(selector, { visible: true }))!
-  } catch (error: unknown) {
-    if (error instanceof TimeoutError) {
-      throw new Error(`Could not find ${description} (selector: ${selector})`, { cause: error })
-    }
-    throw error
-  }
-}
-
-// Click an Angular element that may swallow the click (handler not bound yet).
-// Retry until the click fires `urlFragment`, keying off the request being *sent*,
-// not its response, so a slow round-trip can't look swallowed and double-submit.
-// Once sent, a missing/slow response or non-2xx is the site's fault — throw.
-const clickAwaitingRequest = async (
-  page: Page,
-  button: ElementHandle,
-  urlFragment: string,
-  description: string
-) => {
-  const timeout = 20_000
-  for (let attempt = 1; ; attempt++) {
-    const requestSent = page.waitForRequest(
-      (req) => req.url().toLowerCase().includes(urlFragment),
-      {
-        timeout,
-      }
-    )
-    // Swallow the timeout if the click throws before we await it.
-    requestSent.catch(() => {})
-    await button.click()
-
-    let request: HTTPRequest
-    try {
-      request = await requestSent
-    } catch (error: unknown) {
-      if (!(error instanceof TimeoutError)) throw error
-      if (attempt >= 2) {
-        throw new Error(
-          `${description}: click fired no ${urlFragment} request after ${attempt} attempts (Angular swallowed it)`,
-          { cause: error }
-        )
-      }
-      console.log(`${description}: click fired no request (attempt ${attempt}), re-clicking`)
-      continue
-    }
-
-    // Click landed. Await its response (guard the race where it already arrived);
-    // a timeout now is a hung site, not a swallowed click.
-    let response = request.response()
-    if (response == null) {
-      try {
-        response = await page.waitForResponse((res) => res.request() === request, { timeout })
-      } catch (error: unknown) {
-        if (error instanceof TimeoutError) {
-          throw new Error(
-            `${description}: request sent but no response within 20s (slow/hung site?)`,
-            {
-              cause: error,
-            }
-          )
-        }
-        throw error
-      }
-    }
-    if (!response.ok()) {
-      throw new Error(`${description}: request returned HTTP ${response.status()}`)
-    }
-    return response
-  }
-}
 
 const doLoginFlow = async (page: Page) => {
   await page.goto('https://aarhusbolig.dk/min-side/boligsoegningsportal/boligtilbud/')
