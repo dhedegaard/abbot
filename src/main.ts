@@ -41,6 +41,60 @@ const findVisible = async (page: Page, selector: string, description: string) =>
   }
 }
 
+// Click an Angular element that may swallow the click (handler not bound yet).
+// Retry until the click fires `urlFragment`, keying off the request being *sent*,
+// not its response, so a slow round-trip can't look swallowed and double-submit.
+// Once sent, a missing/slow response or non-2xx is the site's fault — throw.
+const clickAwaitingRequest = async (
+  page: Page,
+  button: ElementHandle,
+  urlFragment: string,
+  description: string
+) => {
+  const matches = (url: string) => url.toLowerCase().includes(urlFragment)
+  for (let attempt = 1; ; attempt++) {
+    const requestSent = page.waitForRequest((req) => matches(req.url()), { timeout: 20_000 })
+    // Swallow the timeout if the click throws before we await it.
+    requestSent.catch(() => {})
+    await button.click()
+
+    let request: HTTPRequest
+    try {
+      request = await requestSent
+    } catch (error: unknown) {
+      if (!(error instanceof TimeoutError)) throw error
+      if (attempt >= 2) {
+        throw new Error(
+          `${description}: click fired no ${urlFragment} request after ${attempt} attempts (Angular swallowed it)`,
+          { cause: error }
+        )
+      }
+      console.log(`${description}: click fired no request (attempt ${attempt}), re-clicking`)
+      continue
+    }
+
+    // Click landed. Await its response (guard the race where it already arrived);
+    // a timeout now is a hung site, not a swallowed click.
+    const response =
+      request.response() ??
+      (await page
+        .waitForResponse((res) => res.request() === request, { timeout: 20_000 })
+        .catch((error: unknown) => {
+          if (error instanceof TimeoutError) {
+            throw new Error(
+              `${description}: request sent but no response within 20s (slow/hung aarhusbolig?)`,
+              { cause: error }
+            )
+          }
+          throw error
+        }))
+    if (!response.ok()) {
+      throw new Error(`${description}: request returned HTTP ${response.status()}`)
+    }
+    return response
+  }
+}
+
 const doLoginFlow = async (page: Page) => {
   await page.goto('https://aarhusbolig.dk/min-side/boligsoegningsportal/boligtilbud/')
 
@@ -111,12 +165,9 @@ const main = async () => {
   })
   const page = await browser.newPage()
 
-  // Diagnostics. Non-GET requests log on send (->), response (<-, with round-trip
-  // time), and failure (xx). The offers-list fetch is POST /Umbraco/api/Offer/
-  // GetOffers, so it shows up here too: the confirm-modal-close wait rides the
-  // decline POST (`->` with no `<-` within 20s = slow/hung site, no `->` after
-  // "Accepted decline!" = the confirm click never submitted), and a refresh click
-  // with no GetOffers `->` means the click was swallowed.
+  // Diagnostics: non-GET requests log on send (->), response (<-, with round-trip
+  // time), and failure (xx). A "re-clicking" line with no matching `->` before it is
+  // a swallowed click (AnswerOffer = decline, GetOffers = refresh).
   const startedAt = performance.now()
   const sentAt = new WeakMap<HTTPRequest, number>()
   const sinceStart = () => `+${Math.round(performance.now() - startedAt)}ms`
@@ -206,63 +257,25 @@ const main = async () => {
         '::-p-text(Ja, jeg bekræfter mit svar)',
         'the confirm-decline button'
       )
-      await acceptDeclineButton.click()
+      // Flaky Angular click (see clickAwaitingRequest); its effect is the decline
+      // POST /Umbraco/api/Offer/AnswerOffer. Awaiting the response also means the
+      // modal has processed its result before we refresh.
+      await clickAwaitingRequest(
+        page,
+        acceptDeclineButton,
+        '/api/offer/answeroffer',
+        'Confirm-decline'
+      )
       console.log('Accepted decline!')
-
-      // Decline is done when the modal closes. "Aktuelle tilbud" is a persistent
-      // tab that matches instantly, so key off the confirm button disappearing.
-      // The modal stays open until aarhusbolig's decline round-trip returns, so an
-      // explicit timeout (matching the refetch waiter) bounds a slow site and the
-      // wrapped error names the step instead of bubbling a bare puppeteer timeout.
-      try {
-        await page.waitForSelector('::-p-text(Ja, jeg bekræfter mit svar)', {
-          hidden: true,
-          timeout: 20_000,
-        })
-      } catch (error: unknown) {
-        if (error instanceof TimeoutError) {
-          throw new Error(
-            'Decline-confirm modal never closed after confirming (slow aarhusbolig?)',
-            { cause: error }
-          )
-        }
-        throw error
-      }
 
       const refreshOffers = await findVisible(
         page,
         '::-p-text(Aktuelle tilbud)',
         'the refresh offers button'
       )
-      // Clicking "Aktuelle tilbud" fires POST /Umbraco/api/Offer/GetOffers even
-      // when the tab is already active (verified against the live site) — that
-      // response is the refresh signal. An earlier detach-based wait timed out in
-      // production because Angular sometimes swallows the click entirely (no
-      // refetch, no re-render), so arm the response waiter before clicking and
-      // re-click if no request lands.
-      for (let attempt = 1; ; attempt++) {
-        const offersRefetched = page.waitForResponse(
-          (res) => res.url().toLowerCase().includes('/api/offer/getoffers'),
-          { timeout: 20_000 }
-        )
-        // If the click throws, this waiter is never awaited; keep its timeout
-        // rejection from surfacing as unhandled.
-        offersRefetched.catch(() => {})
-        await refreshOffers.click()
-        try {
-          await offersRefetched
-          break
-        } catch (error: unknown) {
-          if (!(error instanceof TimeoutError)) throw error
-          if (attempt >= 2) {
-            throw new Error(
-              'Offers list never refetched after declining (no GetOffers response followed the refresh click)',
-              { cause: error }
-            )
-          }
-          console.log(`Refresh click fired no GetOffers request (attempt ${attempt}), re-clicking`)
-        }
-      }
+      // "Aktuelle tilbud" fires POST /Umbraco/api/Offer/GetOffers even when already
+      // active (verified live) — that refetch is the refresh signal.
+      await clickAwaitingRequest(page, refreshOffers, '/api/offer/getoffers', 'Offers refresh')
       // Best-effort: the refetched list should re-render and drop the node we
       // declined. If it stays, don't fail — the next iteration re-declines it and
       // the 50-iteration cap guards a true runaway — but log it for diagnostics.
