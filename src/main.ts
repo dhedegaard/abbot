@@ -93,34 +93,41 @@ const main = async () => {
     // --disable-dev-shm-usage: /dev/shm is tiny in containers and crashes Chrome.
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   })
-  const page = await browser.newPage()
 
-  // Diagnostics: non-GET requests log on send (->), response (<-, with round-trip
-  // time), and failure (xx). A "re-clicking" line with no matching `->` before it is
-  // a swallowed click (AnswerOffer = decline, GetOffers = refresh).
-  const startedAt = performance.now()
-  const sentAt = new WeakMap<HTTPRequest, number>()
-  const sinceStart = () => `+${Math.round(performance.now() - startedAt)}ms`
-  page.on('request', (req) => {
-    if (req.method() === 'GET') return
-    sentAt.set(req, performance.now())
-    console.log(`[net] -> ${req.method()} ${req.url()} at ${sinceStart()}`)
-  })
-  page.on('requestfailed', (req) => {
-    if (req.method() === 'GET') return
-    console.log(
-      `[net] xx ${req.method()} ${req.url()} ${req.failure()?.errorText ?? 'failed'} at ${sinceStart()}`
-    )
-  })
-  page.on('response', (res) => {
-    const req = res.request()
-    if (req.method() === 'GET') return
-    const sent = sentAt.get(req)
-    const took = sent == null ? '?' : `${Math.round(performance.now() - sent)}ms`
-    console.log(`[net] <- ${req.method()} ${res.url()} ${res.status()} took ${took}`)
-  })
-
+  // Declared out here so the catch's error screenshot can reach it. newPage() and
+  // its wiring live inside the try so a failure there still hits the finally that
+  // closes the browser — otherwise the live connection keeps the process alive and
+  // it hangs instead of exiting. (launch() stays outside: a launch failure has no
+  // browser to close and is covered by the top-level catch.)
+  let page: Page | undefined
   try {
+    page = await browser.newPage()
+
+    // Diagnostics: non-GET requests log on send (->), response (<-, with round-trip
+    // time), and failure (xx). A "re-clicking" line with no matching `->` before it is
+    // a swallowed click (AnswerOffer = decline, GetOffers = refresh).
+    const startedAt = performance.now()
+    const sentAt = new WeakMap<HTTPRequest, number>()
+    const sinceStart = () => `+${Math.round(performance.now() - startedAt)}ms`
+    page.on('request', (req) => {
+      if (req.method() === 'GET') return
+      sentAt.set(req, performance.now())
+      console.log(`[net] -> ${req.method()} ${req.url()} at ${sinceStart()}`)
+    })
+    page.on('requestfailed', (req) => {
+      if (req.method() === 'GET') return
+      console.log(
+        `[net] xx ${req.method()} ${req.url()} ${req.failure()?.errorText ?? 'failed'} at ${sinceStart()}`
+      )
+    })
+    page.on('response', (res) => {
+      const req = res.request()
+      if (req.method() === 'GET') return
+      const sent = sentAt.get(req)
+      const took = sent == null ? '?' : `${Math.round(performance.now() - sent)}ms`
+      console.log(`[net] <- ${req.method()} ${res.url()} ${res.status()} took ${took}`)
+    })
+
     const goToOffers = await doLoginFlow(page)
     console.log('Login succeeded')
     // The click sometimes lands before Angular has bound the link's handler and
@@ -233,7 +240,7 @@ const main = async () => {
     process.exitCode = 1
     Sentry.captureException(error)
     console.error('An error occurred:', error)
-    if (env.OUTPUT_DIR != null) {
+    if (env.OUTPUT_DIR != null && page != null) {
       // The page/browser is often dead by the time we're here — don't let a
       // failed screenshot mask the original error we just reported.
       try {
