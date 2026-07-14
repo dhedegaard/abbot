@@ -53,6 +53,8 @@ When bumping `puppeteer`, also bump the `ghcr.io/puppeteer/puppeteer:<version>` 
 
 Prettier is configured in `.prettierrc.json`: no semicolons, single quotes, 100-char width, 2-space tabs, ES5 trailing commas. Run `npm run format` to write, `npm run format:check` to verify.
 
+`format:check` runs `prettier --check .` over the whole repo — Markdown/YAML too, not just `src`. Run `npm run format` before committing doc-only edits (e.g. `*x*` → `_x_` in CLAUDE.md), or CI can go red on formatting alone.
+
 ESLint uses a flat config (`eslint.config.mjs`) with typescript-eslint's type-aware `recommendedTypeChecked` preset (scoped to `src/**/*.ts`; `eslint-config-prettier` disables formatting rules). Run `npm run lint` (or `lint:fix`).
 
 ## CI
