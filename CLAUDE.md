@@ -23,6 +23,8 @@ Required env vars (parsed via the zod `ENV` schema at the top of `src/main.ts`):
 
 `.envrc` is used with direnv for local development. With `HEADLESS=0` the browser stays open for 20s after completion (in `main()`'s `finally` block) so you can watch what happened.
 
+**Verifying decline-loop changes needs a real pending offer.** With none, `npm start` logs in, hits an empty list, prints `No offers to decline, quitting!` and exits *before* the confirm/refresh code runs — so a clean run on an empty account exercises none of the decline loop. CI only lints/type-checks; it never drives the browser.
+
 Scheduling/periodic execution is handled externally (outside this repo) — don't add a cron or scheduled workflow here; the script is meant to be invoked as a one-shot.
 
 Docker:
