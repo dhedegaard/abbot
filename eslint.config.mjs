@@ -1,9 +1,9 @@
 import js from '@eslint/js'
+import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier'
 
-export default tseslint.config(
-  { ignores: ['node_modules/', 'output/'] },
+export default defineConfig(
   {
     files: ['src/**/*.ts'],
     extends: [
