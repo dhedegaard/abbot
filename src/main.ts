@@ -51,9 +51,14 @@ const clickAwaitingRequest = async (
   urlFragment: string,
   description: string
 ) => {
-  const matches = (url: string) => url.toLowerCase().includes(urlFragment)
+  const timeout = 20_000
   for (let attempt = 1; ; attempt++) {
-    const requestSent = page.waitForRequest((req) => matches(req.url()), { timeout: 20_000 })
+    const requestSent = page.waitForRequest(
+      (req) => req.url().toLowerCase().includes(urlFragment),
+      {
+        timeout,
+      }
+    )
     // Swallow the timeout if the click throws before we await it.
     requestSent.catch(() => {})
     await button.click()
@@ -75,19 +80,22 @@ const clickAwaitingRequest = async (
 
     // Click landed. Await its response (guard the race where it already arrived);
     // a timeout now is a hung site, not a swallowed click.
-    const response =
-      request.response() ??
-      (await page
-        .waitForResponse((res) => res.request() === request, { timeout: 20_000 })
-        .catch((error: unknown) => {
-          if (error instanceof TimeoutError) {
-            throw new Error(
-              `${description}: request sent but no response within 20s (slow/hung aarhusbolig?)`,
-              { cause: error }
-            )
-          }
-          throw error
-        }))
+    let response = request.response()
+    if (response == null) {
+      try {
+        response = await page.waitForResponse((res) => res.request() === request, { timeout })
+      } catch (error: unknown) {
+        if (error instanceof TimeoutError) {
+          throw new Error(
+            `${description}: request sent but no response within 20s (slow/hung site?)`,
+            {
+              cause: error,
+            }
+          )
+        }
+        throw error
+      }
+    }
     if (!response.ok()) {
       throw new Error(`${description}: request returned HTTP ${response.status()}`)
     }
@@ -195,7 +203,9 @@ const main = async () => {
     console.log('Login succeeded')
     // The click sometimes lands before Angular has bound the link's handler and
     // silently does nothing — which would end the run as a false "no offers"
-    // success. Verify the SPA actually navigated and retry the click if not.
+    // success. Same swallowed-click hazard as clickAwaitingRequest, but verified by
+    // URL change rather than a request, so it stays a separate loop.
+    // Verify the SPA actually navigated and retry the click if not.
     for (let attempt = 1; ; attempt++) {
       await goToOffers.click()
       try {
