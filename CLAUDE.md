@@ -39,6 +39,8 @@ Compose mounts `./output` → `/output` for screenshots. Image publishes to `ghc
 
 When bumping `puppeteer`, bump the `ghcr.io/puppeteer/puppeteer:<version>` base tag in the `Dockerfile` to the exact same version — they must stay in lockstep so `npm ci` reuses the image's Chromium instead of downloading a second copy.
 
+Node version is pinned in six places that must move together on a bump: `engines.node` + `@types/node@^<N>` (package.json), `.nvmrc`, `@tsconfig/node<N>` and its `lib` override (tsconfig.json), and the Dockerfile's puppeteer base image — which bundles its own Node (`25.1.0` → Node 24.16.0), not directly settable. CI needs no edit; `setup-node` reads `node-version-file: package.json`. Check the base image's Node cheaply (no layer pull) with `docker buildx imagetools inspect ghcr.io/puppeteer/puppeteer:<ver> --format '{{json .Image}}'`.
+
 ## Architecture notes
 
 - **No test suite, no build step.** `tsx` runs the TypeScript directly; `tsconfig.json` is type-check only (`npm run typecheck` = `tsc --noEmit`), extending `@tsconfig/node24` + `@tsconfig/strictest`. No bundler or test runner exists. `moduleResolution` is `nodenext`, so relative imports use `.js` specifiers that resolve to the `.ts` files (`./env.js`, `./puppeteer-helpers.js`).
