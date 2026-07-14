@@ -1,11 +1,19 @@
 {
-  "extends": ["@tsconfig/node22/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
+  "extends": ["@tsconfig/node24/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
   "compilerOptions": {
     "noEmit": true,
     "types": ["node"],
-    // Re-list @tsconfig/node22's libs (lib replaces, doesn't merge) plus DOM, so
+    // Re-list @tsconfig/node24's libs (lib replaces, doesn't merge) plus DOM, so
     // puppeteer browser-context callbacks (page.waitForFunction) can use DOM types.
-    "lib": ["es2024", "ESNext.Array", "ESNext.Collection", "ESNext.Iterator", "DOM"]
+    "lib": [
+      "es2024",
+      "ESNext.Array",
+      "ESNext.Collection",
+      "ESNext.Error",
+      "ESNext.Iterator",
+      "ESNext.Promise",
+      "DOM"
+    ]
   },
   "include": ["src/**/*.ts"]
 }
