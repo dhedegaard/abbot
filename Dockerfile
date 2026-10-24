@@ -7,7 +7,7 @@
 
 # Typecheck stage: full deps + tsc, so a type error fails the build and a broken
 # image never publishes. No browser needed here, so skip the Chromium download.
-FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25.1.0 AS typecheck
+FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25.16.0 AS typecheck
 WORKDIR /app
 ENV PUPPETEER_SKIP_DOWNLOAD="true"
 COPY package.json package-lock.json ./
@@ -16,7 +16,7 @@ COPY . ./
 RUN npm run typecheck
 
 # Runtime stage.
-FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25.1.0
+FROM --platform=linux/amd64 ghcr.io/puppeteer/puppeteer:25.16.0
 
 WORKDIR /app
 
