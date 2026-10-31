@@ -18,7 +18,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@sentry/node": "^10.78.0",
+    "@sentry/node": "^11.10.0",
     "puppeteer": "^25.3.0",
     "zod": "^4.4.3"
   },

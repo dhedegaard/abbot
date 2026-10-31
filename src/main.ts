@@ -6,11 +6,8 @@ import { env } from './env.ts'
 import { clickAwaitingRequest, findVisible } from './puppeteer-helpers.ts'
 
 // Error monitoring is opt-in: with no SENTRY_DSN the SDK stays disabled.
-// sendDefaultPii stays off — this script handles login credentials and we don't
-// want them attached to events.
 Sentry.init({
   dsn: env.SENTRY_DSN,
-  sendDefaultPii: false,
 })
 
 // Build a screenshot path under OUTPUT_DIR. Colons in the ISO stamp become `-`

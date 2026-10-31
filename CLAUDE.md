@@ -59,7 +59,7 @@ Node version is pinned in six places that must move together on a bump: `engines
   - Exits via a 10s `TimeoutError` on the `#answer` check when no offers remain (`visible: true` → `waitForSelector` resolves the element or throws, never `null`). Capped at 50 iterations as a runaway guard.
   - `select('Decline')` is checked against its returned matches and throws loudly if the option is gone (else it silently no-ops and stalls on a confirm modal that never opens).
 - **Error handling** writes `error-<iso-timestamp>.png` to `OUTPUT_DIR` if set (success path: `success-<iso-timestamp>.png`); colons in the ISO stamp become `-` for filesystem safety.
-- **Sentry** (`@sentry/node`, init once atop `src/main.ts`): `captureException` runs in `main()`'s catch and the top-level `.catch` (the latter covers `launch()`, before the try). Being a short-lived one-shot, `await Sentry.flush(5_000)` runs after `main()` so buffered events send before exit. `sendDefaultPii` is off (login credentials). No `SENTRY_DSN` = no-op.
+- **Sentry** (`@sentry/node`, init once atop `src/main.ts`): `captureException` runs in `main()`'s catch and the top-level `.catch` (the latter covers `launch()`, before the try). Being a short-lived one-shot, `await Sentry.flush(5_000)` runs after `main()` so buffered events send before exit. `dataCollection` is left at the SDK defaults. No `SENTRY_DSN` = no-op.
 - **Launch:** `--no-sandbox`, fixed 1600×1000 viewport. Docker image pinned to `linux/amd64` (compose forces the platform too).
 
 ## Formatting & linting
